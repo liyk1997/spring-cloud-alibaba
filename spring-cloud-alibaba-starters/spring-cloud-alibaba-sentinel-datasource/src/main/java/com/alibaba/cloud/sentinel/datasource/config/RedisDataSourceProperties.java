@@ -60,10 +60,6 @@ public class RedisDataSourceProperties extends AbstractDataSourceProperties {
 	 */
 	private Duration timeout;
 
-	/**
-	 * Comma-separated list of "host:port" pairs.
-	 */
-	private List<String> nodes;
 
 	/**
 	 * data key in Redis.
@@ -75,10 +71,89 @@ public class RedisDataSourceProperties extends AbstractDataSourceProperties {
 	 */
 	private String channel;
 
+
+	private Sentinel sentinel;
+
+	private Cluster cluster;
+
+
 	/**
-	 * redis sentinel model.
+	 * Cluster properties.
 	 */
-	private String masterId;
+	public static class Cluster {
+
+		/**
+		 * Comma-separated list of "host:port" pairs to bootstrap from. This represents an
+		 * "initial" list of cluster nodes and is required to have at least one entry.
+		 */
+		private List<String> nodes;
+
+		/**
+		 * Maximum number of redirects to follow when executing commands across the
+		 * cluster.
+		 */
+		private Integer maxRedirects;
+
+		public List<String> getNodes() {
+			return this.nodes;
+		}
+
+		public void setNodes(List<String> nodes) {
+			this.nodes = nodes;
+		}
+
+		public Integer getMaxRedirects() {
+			return this.maxRedirects;
+		}
+
+		public void setMaxRedirects(Integer maxRedirects) {
+			this.maxRedirects = maxRedirects;
+		}
+
+	}
+
+	public static class Sentinel {
+
+		/**
+		 * Name of the Redis server.
+		 */
+		private String master;
+
+		/**
+		 * Comma-separated list of "host:port" pairs.
+		 */
+		private List<String> nodes;
+
+		/**
+		 * Password for authenticating with sentinel(s).
+		 */
+		private String password;
+
+		public String getMaster() {
+			return this.master;
+		}
+
+		public void setMaster(String master) {
+			this.master = master;
+		}
+
+		public List<String> getNodes() {
+			return this.nodes;
+		}
+
+		public void setNodes(List<String> nodes) {
+			this.nodes = nodes;
+		}
+
+		public String getPassword() {
+			return this.password;
+		}
+
+		public void setPassword(String password) {
+			this.password = password;
+		}
+
+	}
 
 	@Override
 	public void preCheck(String dataSourceName) {
@@ -93,10 +168,6 @@ public class RedisDataSourceProperties extends AbstractDataSourceProperties {
 					"RedisDataSource  channel can not be empty");
 		}
 
-		if (StringUtils.isEmpty(masterId)) {
-			throw new IllegalArgumentException(
-					"RedisDataSource  sentinel model，masterId can not be empty");
-		}
 	}
 
 	public String getHost() {
@@ -155,20 +226,19 @@ public class RedisDataSourceProperties extends AbstractDataSourceProperties {
 		this.timeout = timeout;
 	}
 
-	public List<String> getNodes() {
-		return nodes;
+	public Sentinel getSentinel() {
+		return sentinel;
 	}
 
-	public void setNodes(List<String> nodes) {
-		this.nodes = nodes;
+	public void setSentinel(Sentinel sentinel) {
+		this.sentinel = sentinel;
 	}
 
-	public String getMasterId() {
-		return masterId;
+	public Cluster getCluster() {
+		return cluster;
 	}
 
-	public void setMasterId(String masterId) {
-		this.masterId = masterId;
+	public void setCluster(Cluster cluster) {
+		this.cluster = cluster;
 	}
-
 }

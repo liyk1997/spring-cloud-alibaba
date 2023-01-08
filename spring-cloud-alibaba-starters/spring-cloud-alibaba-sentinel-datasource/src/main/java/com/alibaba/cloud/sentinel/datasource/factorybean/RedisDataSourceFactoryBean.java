@@ -35,7 +35,6 @@ import org.springframework.util.StringUtils;
  * @see RedisDataSource
  */
 public class RedisDataSourceFactoryBean implements FactoryBean<RedisDataSource> {
-
 	private String host;
 
 	private int port;
@@ -44,10 +43,6 @@ public class RedisDataSourceFactoryBean implements FactoryBean<RedisDataSource> 
 
 	private Duration timeout;
 
-	/**
-	 * Comma-separated list of "host:port" pairs.
-	 */
-	private List<String> nodes;
 
 	private Converter converter;
 
@@ -66,17 +61,100 @@ public class RedisDataSourceFactoryBean implements FactoryBean<RedisDataSource> 
 	 */
 	private String password;
 
-	private String masterId;
+
+	private Sentinel sentinel;
+
+	private Cluster cluster;
+
+
+	/**
+	 * Cluster properties.
+	 */
+	public static class Cluster {
+
+		/**
+		 * Comma-separated list of "host:port" pairs to bootstrap from. This represents an
+		 * "initial" list of cluster nodes and is required to have at least one entry.
+		 */
+		private List<String> nodes;
+
+		/**
+		 * Maximum number of redirects to follow when executing commands across the
+		 * cluster.
+		 */
+		private Integer maxRedirects;
+
+		public List<String> getNodes() {
+			return this.nodes;
+		}
+
+		public void setNodes(List<String> nodes) {
+			this.nodes = nodes;
+		}
+
+		public Integer getMaxRedirects() {
+			return this.maxRedirects;
+		}
+
+		public void setMaxRedirects(Integer maxRedirects) {
+			this.maxRedirects = maxRedirects;
+		}
+
+	}
+
+	/**
+	 * Redis sentinel properties.
+	 */
+	public static class Sentinel {
+
+		/**
+		 * Name of the Redis server.
+		 */
+		private String master;
+
+		/**
+		 * Comma-separated list of "host:port" pairs.
+		 */
+		private List<String> nodes;
+
+		/**
+		 * Password for authenticating with sentinel(s).
+		 */
+		private String password;
+
+		public String getMaster() {
+			return this.master;
+		}
+
+		public void setMaster(String master) {
+			this.master = master;
+		}
+
+		public List<String> getNodes() {
+			return this.nodes;
+		}
+
+		public void setNodes(List<String> nodes) {
+			this.nodes = nodes;
+		}
+
+		public String getPassword() {
+			return this.password;
+		}
+
+		public void setPassword(String password) {
+			this.password = password;
+		}
+
+	}
 
 	@Override
 	public RedisDataSource getObject() {
 		RedisConnectionConfig.Builder builder = RedisConnectionConfig.builder();
-
-		if (nodes == null || nodes.isEmpty()) {
+		if(sentinel==null && cluster==null){
 			builder.withHost(host).withPort(port).withDatabase(database);
-		}
-		else {
-			nodes.forEach(node -> {
+		}else if (sentinel!=null&&cluster==null){
+			sentinel.getNodes().forEach(node -> {
 				try {
 					String[] parts = StringUtils.split(node, ":");
 					Assert.state(parts.length == 2, "Must be defined as 'host:port'");
@@ -87,9 +165,23 @@ public class RedisDataSourceFactoryBean implements FactoryBean<RedisDataSource> 
 							"Invalid redis sentinel property " + node, ex);
 				}
 			});
-			builder.withSentinelMasterId(masterId);
+			builder.withSentinelMasterId(sentinel.getMaster());
+		}else if (sentinel == null){
+			cluster.getNodes().forEach(node -> {
+				try {
+					String[] parts = StringUtils.split(node, ":");
+					Assert.state(parts.length == 2, "Must be defined as 'host:port'");
+					builder.withRedisCluster(parts[0], Integer.parseInt(parts[1]));
+				}
+				catch (RuntimeException ex) {
+					throw new IllegalStateException(
+							"Invalid redis Cluster property " + node, ex);
+				}
+			});
+		}else {
+			throw new IllegalStateException(
+					"Invalid redis sentinel property ");
 		}
-
 		if (timeout != null) {
 			builder.withTimeout(timeout.toMillis());
 		}
@@ -171,20 +263,19 @@ public class RedisDataSourceFactoryBean implements FactoryBean<RedisDataSource> 
 		this.timeout = timeout;
 	}
 
-	public List<String> getNodes() {
-		return nodes;
+	public Sentinel getSentinel() {
+		return sentinel;
 	}
 
-	public void setNodes(List<String> nodes) {
-		this.nodes = nodes;
+	public void setSentinel(Sentinel sentinel) {
+		this.sentinel = sentinel;
 	}
 
-	public String getMasterId() {
-		return masterId;
+	public Cluster getCluster() {
+		return cluster;
 	}
 
-	public void setMasterId(String masterId) {
-		this.masterId = masterId;
+	public void setCluster(Cluster cluster) {
+		this.cluster = cluster;
 	}
-
 }
